@@ -1,9 +1,8 @@
-name: Deploy to EC2
+name: Secure Deploy with SSM
 
 on:
   push:
-    branches:
-      - main
+    branches: [main] # or any branch you use
 
 jobs:
   deploy:
@@ -13,18 +12,30 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Set up SSH
+      - name: Install AWS CLI
         run: |
-          mkdir -p ~/.ssh
-          echo "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/id_rsa
-          chmod 600 ~/.ssh/id_rsa
-          ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
+          sudo apt-get update
+          sudo apt-get install -y awscli
 
-      - name: Deploy to EC2
+      - name: Deploy app using SSM
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_REGION: ${{ secrets.AWS_REGION }}
         run: |
-          ssh ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'EOF'
-            cd ~/dadjokes
-            git pull origin main
-            npm install
-            pm2 restart dadjokes || pm2 start server.js --name dadjokes
-          EOF
+          # Find EC2 instance by name tag
+          INSTANCE_ID=$(aws ec2 describe-instances \
+            --filters "Name=tag:Name,Values=my-ec2-server" \
+                      "Name=instance-state-name,Values=running" \
+            --query "Reservations[0].Instances[0].InstanceId" \
+            --output text)
+
+          echo "Deploying to EC2 Instance: $INSTANCE_ID"
+
+          # Send commands to EC2 via SSM
+          aws ssm send-command \
+            --document-name "AWS-RunShellScript" \
+            --comment "Deploying DadJokes App" \
+            --instance-ids "$INSTANCE_ID" \
+            --parameters commands="cd ~/dadjokes && git pull origin main && npm install && pm2 restart dadjokes || pm2 start server.js --name dadjokes" \
+            --region "$AWS_REGION"
