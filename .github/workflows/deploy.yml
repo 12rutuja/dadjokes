@@ -18,15 +18,15 @@ jobs:
       with:
         aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        aws-region: ${{secrets.AWS_REGION}} # Update if needed
+        aws-region: ${{ secrets.AWS_REGION }}
 
     - name: Deploy via AWS SSM
       run: |
         aws ssm send-command \
           --document-name "AWS-RunShellScript" \
           --comment "Deploying new code to dadjokes server" \
-          --targets "Key=tag:Name1,Values=my-ec2-server" \
-          --parameters '{"commands":["cd ~/dadjokes", "git pull", "npm install", "pm2 restart dadjokes || pm2 start server.js --name dadjokes"]}'
+          --targets "Key=tag:Name,Values=my-ec2-server" \
+          --parameters commands=["cd ~/dadjokes","git pull","npm install","pm2 restart dadjokes || pm2 start server.js --name dadjokes"] \
           --timeout-seconds 600 \
           --region ${{ secrets.AWS_REGION }} \
           --output text
