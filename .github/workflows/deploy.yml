@@ -1,4 +1,4 @@
-name: Deploy to EC2 via SSM
+name: Deploy Node.js App to EC2 via SSM
 
 on:
   push:
@@ -24,18 +24,9 @@ jobs:
       run: |
         aws ssm send-command \
           --document-name "AWS-RunShellScript" \
-          --comment "Deploying new code to dadjokes server" \
+          --comment "Deploying Node.js app with PM2" \
           --targets "Key=tag:Name,Values=my-ec2-server" \
-          --parameters commands=["cd ~/dadjokes","git pull","npm install","pm2 restart dadjokes || pm2 start server.js --name dadjokes"] \
+          --parameters 'commands=["cd ~/dadjokes","git pull origin main","npm install","pm2 restart dadjokes || pm2 start server.js --name dadjokes"]' \
           --timeout-seconds 600 \
           --region ${{ secrets.AWS_REGION }} \
           --output text
-
-    - name: Deploy to EC2
-      run: |
-        ssh ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'EOF'
-          cd ~/dadjokes
-          git pull origin main
-          npm install
-          pm2 restart dadjokes || pm2 start server.js --name dadjokes
-        EOF
