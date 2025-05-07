@@ -2,14 +2,14 @@ name: Secure Deploy with SSM
 
 on:
   push:
-    branches: [main] # or any branch you use
+    branches: [main]
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
+      - name: Checkout repo
         uses: actions/checkout@v3
 
       - name: Install AWS CLI
@@ -17,25 +17,24 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y awscli
 
-      - name: Deploy app using SSM
+      - name: Deploy using SSM
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           AWS_REGION: ${{ secrets.AWS_REGION }}
         run: |
-          # Find EC2 instance by name tag
           INSTANCE_ID=$(aws ec2 describe-instances \
-            --filters "Name=tag:Name,Values=my-ec2-server" \
+            --filters "Name=tag:Name,Values=YOUR_INSTANCE_NAME" \
                       "Name=instance-state-name,Values=running" \
             --query "Reservations[0].Instances[0].InstanceId" \
             --output text)
 
           echo "Deploying to EC2 Instance: $INSTANCE_ID"
 
-          # Send commands to EC2 via SSM
           aws ssm send-command \
             --document-name "AWS-RunShellScript" \
-            --comment "Deploying DadJokes App" \
+            --comment "Deploying app" \
             --instance-ids "$INSTANCE_ID" \
             --parameters commands="cd ~/dadjokes && git pull origin main && npm install && pm2 restart dadjokes || pm2 start server.js --name dadjokes" \
-            --region "$AWS_REGION"
+            --region "$AWS_REGION" \
+            --output text
