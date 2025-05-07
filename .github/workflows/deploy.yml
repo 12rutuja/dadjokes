@@ -26,7 +26,7 @@ jobs:
           --document-name "AWS-RunShellScript" \
           --comment "Deploying new code to dadjokes server" \
           --targets "Key=tag:Name1,Values=my-ec2-server" \
-          --parameters commands=["cd ~/dadjokes", "git pull", "npm install", "pm2 restart dadjokes || pm2 start server.js --name dadjokes"] \
+          --parameters '{"commands":["cd ~/dadjokes", "git pull", "npm install", "pm2 restart dadjokes || pm2 start server.js --name dadjokes"]}'
           --timeout-seconds 600 \
           --region ${{ secrets.AWS_REGION }} \
           --output text
