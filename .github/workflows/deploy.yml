@@ -1,40 +1,32 @@
-name: Secure Deploy with SSM
+name: Deploy to EC2 via SSM
 
 on:
   push:
-    branches: [main]
+    branches:
+      - main
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repo
-        uses: actions/checkout@v3
+    - name: Checkout repository
+      uses: actions/checkout@v3
 
-      - name: Install AWS CLI
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y awscli
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v2
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: us-east-1  # Update if needed
 
-      - name: Deploy using SSM
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          AWS_REGION: ${{ secrets.AWS_REGION }}
-        run: |
-          INSTANCE_ID=$(aws ec2 describe-instances \
-            --filters "Name=tag:Name,Values=node app" \
-                      "Name=instance-state-name,Values=running" \
-            --query "Reservations[0].Instances[0].InstanceId" \
-            --output text)
-
-          echo "Deploying to EC2 Instance: $INSTANCE_ID"
-
-          aws ssm send-command \
-            --document-name "AWS-RunShellScript" \
-            --comment "Deploying app" \
-            --instance-ids "$INSTANCE_ID" \
-            --parameters commands="cd ~/dadjokes && git pull origin main && npm install && pm2 restart dadjokes || pm2 start server.js --name dadjokes" \
-            --region "$AWS_REGION" \
-            --output text
+    - name: Deploy via AWS SSM
+      run: |
+        aws ssm send-command \
+          --document-name "AWS-RunShellScript" \
+          --comment "Deploying new code to dadjokes server" \
+          --targets "Key=tag:Name,Values=dadjokes-server" \
+          --parameters 'commands=["cd ~/dadjokes", "git pull", "npm install", "pm2 restart dadjokes || pm2 start server.js --name dadjokes"]' \
+          --timeout-seconds 600 \
+          --region us-east-1 \
+          --output text
