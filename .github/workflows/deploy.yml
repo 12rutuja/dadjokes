@@ -26,7 +26,15 @@ jobs:
           --document-name "AWS-RunShellScript" \
           --comment "Deploying Node.js app with PM2" \
           --targets "Key=tag:Name,Values=my-ec2-server" \
-          --parameters 'commands=["cd ~/dadjokes","git pull origin main","npm install","pm2 restart dadjokes || pm2 start server.js --name dadjokes"]' \
+          --parameters 'commands=[
+            "export NVM_DIR=\"$HOME/.nvm\"",
+            "[ -s \"$NVM_DIR/nvm.sh\" ] && . \"$NVM_DIR/nvm.sh\"",
+            "cd /home/ubuntu/dadjokes",
+            "git pull origin main",
+            "npm install",
+            "pm2 describe dadjokes && pm2 restart dadjokes || pm2 start server.js --name dadjokes --time",
+            "pm2 save"
+          ]' \
           --timeout-seconds 600 \
           --region ${{ secrets.AWS_REGION }} \
           --output text
